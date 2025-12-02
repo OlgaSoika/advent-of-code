@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <iomanip>
 
 struct Direction {
     bool bRight;  // true for R, false for L
@@ -67,30 +68,57 @@ void calculate_position_part1(int &position, bool bRight, int value) {
     }
     
     // Wrap around logic for positions 0-99
-    while (position < 0) {
+    if (position < 0) {
         position += 100;
     }
-    while (position >= 100) {
+    if (position >= 100) {
         position -= 100;
     }
 }
 
 void calculate_position_part2(int &position, bool bRight, int value, int &delta_part2) {
+    int old_position = position;
+
     if (bRight) {
         position += value;
-        
-        while (position >= 100) {
-            position -= 100;
-            delta_part2++;
-        }
+        delta_part2 += position / 100;
+        position = position % 100;
     } else {
+        // calculate how many times we hit 0
+        if (value >= old_position && old_position > 0) {
+            // We will cross 0: first hit at old_position clicks, then every 100
+            delta_part2 += 1 + (value - old_position) / 100;
+        } else if (old_position == 0 && value >= 100) {
+            // Starting at 0: hit 0 every 100 clicks  
+            delta_part2 += value / 100;
+        }
+        
         position -= value;
-        while (position < 0) {
-            position += 100;
+        position = ((position % 100) + 100) % 100;
+    }
+}
+
+void calculate_position_part3(int &position, bool bRight, int value, int &delta_part2) {
+    for(int i = 0; i < value; i++) {
+        if (bRight) {
+            position++;
+            if (position == 100) {
+                position = 0;
+            }
+        } else {
+            position--;
+            if (position < 0) {
+                position = 99;
+            }
+        }
+        
+        // Count every time we land on position 0 during rotation
+        if (position == 0) {
             delta_part2++;
         }
     }
 }
+
 int main(int argc, char* argv[]) {
     std::string filename;
     
@@ -118,11 +146,11 @@ int main(int argc, char* argv[]) {
             calculate_position_part1( start_position_p1, dir.bRight, dir.value );
             calculate_position_part2( start_position_p2, dir.bRight, dir.value, delta_part2 );
 
-            std::cout << "Direction: " << (dir.bRight ? "R" : "L") 
-                      << ", Value: " << dir.value 
-                      << ", Position P1: " << start_position_p1
-                      << ", Position P2: " << start_position_p2
-                      << ", Delta Part 2: " << delta_part2 << std::endl;
+            std::cout << (dir.bRight ? "R" : "L") 
+                      << std::setw(4) << dir.value 
+                      << " | P1:" << std::setw(3) << start_position_p1
+                      << " | P2:" << std::setw(3) << start_position_p2
+                      << " | Delta:" << std::setw(5) << delta_part2 << std::endl;
 
             if(start_position_p1 == 0) {
                 zero_positions++;
