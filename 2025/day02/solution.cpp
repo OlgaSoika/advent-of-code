@@ -28,7 +28,6 @@ std::vector<std::string> readFile(const std::string &filename) {
         }
     }
     
-    inFile.close();
     return lines;
 }
 
