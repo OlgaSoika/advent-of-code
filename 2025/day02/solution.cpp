@@ -64,7 +64,47 @@ unsigned long long calculate_sum(const std::string &first, const std::string &se
         
         if( !val_str.compare(0, len/2, val_str, len/2, len/2)) {
             sum += val;
-            std::cout << "Invalid value: " << val << std::endl;
+            std::cout << "Part 1 invalid value: " << val << std::endl;
+        }
+    
+    }
+
+    return sum;
+}
+
+bool is_invalid_value(std::string str_value, size_t part_len) {
+    // the function checks if the string is made of identical parts
+    // each part has length of part_len
+
+    if( str_value.length() % part_len != 0 )
+        return false;
+
+    for(size_t i = 1; i < str_value.length()/part_len; i++) {
+        if( str_value.compare(0, part_len, str_value, i*part_len, part_len) != 0 )
+            return false;
+    }
+    return true;
+}
+
+unsigned long long calculate_sum_part2(const std::string &first, const std::string &second) {
+    unsigned long long sum = 0;
+
+    unsigned long long start_val = std::stoull(first);
+    unsigned long long end_val = std::stoull(second);
+
+    for(unsigned long long val = start_val; val <= end_val; val++ ) {
+        std::string val_str = std::to_string(val);
+
+        size_t digits = val_str.length();
+
+        bool bFound = false;
+        for(size_t len = 1; !bFound && (len <= digits/2); len++) {
+        
+            if( is_invalid_value(val_str, len)) {
+                sum += val;
+                std::cout << "Part2 invalid value: " << val << std::endl;
+                bFound = true;
+            }
         }
     
     }
@@ -84,16 +124,20 @@ int main(int argc, char* argv[]) {
         std::vector<std::pair<std::string, std::string>> pairs = readFile(filename);
         
         unsigned long long sum = 0;
+        unsigned long long sum_part2 = 0;
+
         for (const auto &p : pairs) {
             std::cout << p.first << " - " << p.second << std::endl;
 
             sum += calculate_sum(p.first, p.second);
+            sum_part2 += calculate_sum_part2(p.first, p.second);
 
         }
 
         std::cout << "Read " << pairs.size() << " pairs from file." << std::endl;
 
         std::cout << "Sum of all invalid IDs:" << sum << std::endl;
+        std::cout << "Sum of all invalid IDs, new rule (part 2):" << sum_part2 << std::endl;
         
         // Your solution logic goes here
         
