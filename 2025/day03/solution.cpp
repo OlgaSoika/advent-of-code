@@ -23,6 +23,8 @@ std::vector<std::string> readInputFile(const std::string &filename) {
             data.push_back(line);
         }
     }
+
+    
     
     inFile.close();
     return data;
