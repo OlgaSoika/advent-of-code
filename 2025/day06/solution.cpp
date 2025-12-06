@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 bool parseCommandLine(int argc, char* argv[], std::string &filename) {
     for (int i = 1; i < argc; i++) {
