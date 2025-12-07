@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <sstream>
+#include <tuple>
+#include <cctype>
 
 bool parseCommandLine(int argc, char* argv[], std::string &filename) {
     for (int i = 1; i < argc; i++) {
@@ -15,8 +18,9 @@ bool parseCommandLine(int argc, char* argv[], std::string &filename) {
 }
 
 // Example reading function - adapt based on your input format
-std::vector<std::string> readInputFile(const std::string &filename) {
-    std::vector<std::string> data;
+std::tuple<std::vector<std::vector<unsigned>>, std::vector<char>> readInputFile(const std::string &filename) {
+    std::vector<std::vector<unsigned>> values;
+    std::vector<char> symbols;
     std::ifstream inFile(filename);
     
     if (!inFile) {
@@ -24,14 +28,45 @@ std::vector<std::string> readInputFile(const std::string &filename) {
     }
     
     std::string line;
+    std::vector<std::string> lines;
+    
+    // Read all lines
     while (std::getline(inFile, line)) {
         if (!line.empty()) {
-            data.push_back(line);
+            lines.push_back(line);
         }
     }
     
     inFile.close();
-    return data;
+    
+    if (lines.empty()) {
+        return std::make_tuple(values, symbols);
+    }
+    
+    // Parse the last line as symbols
+    std::string lastLine = lines.back();
+    for (char ch : lastLine) {
+        if (ch == '*' || ch == '+') {
+            symbols.push_back(ch);
+        }
+    }
+    
+    // Parse all other lines as numbers
+    for (size_t i = 0; i < lines.size() - 1; i++) {
+        std::vector<unsigned> row;
+        std::istringstream iss(lines[i]);
+        unsigned num;
+        
+        while (iss >> num) {
+            row.push_back(num);
+        }
+        
+        if (!row.empty()) {
+            values.push_back(row);
+        }
+    }
+    
+    return std::make_tuple(values, symbols);
 }
 
 int main(int argc, char* argv[]) {
@@ -43,11 +78,36 @@ int main(int argc, char* argv[]) {
     }
     
     try {
-        std::vector<std::string> data = readInputFile(filename);
+        auto [values, symbols] = readInputFile(filename);
         
-        std::cout << "Read " << data.size() << " lines from file." << std::endl;
+        std::cout << "Read " << values.size() << " rows of numbers and " 
+                  << symbols.size() << " symbols from file." << std::endl;
         
         // Your solution logic goes here
+        size_t num = symbols.size();
+        std::vector<unsigned long long> total;
+        total.resize(num);
+
+        unsigned long long grand_total = 0;
+
+        for(unsigned j=0; j< num; j++) {
+            if( symbols[j] == '*')
+                    total[j] = 1;
+                else if( symbols[j] == '+')
+                    total[j] = 0;   
+
+            for(size_t i=0; i< values.size(); i++) {
+                if( symbols[j] == '*')
+                    total[j] *= values[i][j];
+                else if( symbols[j] == '+')
+                    total[j] += values[i][j];                
+
+            }
+
+            grand_total += total[j];
+        }
+        
+        std::cout << "Grand total: " << grand_total << std::endl;
         
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
