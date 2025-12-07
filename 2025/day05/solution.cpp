@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <sstream>
+#include <utility>
+#include <tuple>
 
 bool parseCommandLine(int argc, char* argv[], std::string &filename) {
     for (int i = 1; i < argc; i++) {
@@ -14,9 +17,9 @@ bool parseCommandLine(int argc, char* argv[], std::string &filename) {
     return false;
 }
 
-// Example reading function - adapt based on your input format
-std::vector<std::string> readInputFile(const std::string &filename) {
-    std::vector<std::string> data;
+std::tuple<std::vector<std::pair<unsigned long long, unsigned long long>>, std::vector<unsigned long long>> readInputFile(const std::string &filename) {
+    std::vector<std::pair<unsigned long long, unsigned long long>> ranges;
+    std::vector<unsigned long long> ingredients;
     std::ifstream inFile(filename);
     
     if (!inFile) {
@@ -24,14 +27,31 @@ std::vector<std::string> readInputFile(const std::string &filename) {
     }
     
     std::string line;
+    bool readingRanges = true;
+    
     while (std::getline(inFile, line)) {
-        if (!line.empty()) {
-            data.push_back(line);
+        if (line.empty()) {
+            // Empty line marks the transition from ranges to ingredients
+            readingRanges = false;
+            continue;
+        }
+        
+        if (readingRanges) {
+            // Parse range in format "3-5"
+            size_t dashPos = line.find('-');
+            if (dashPos != std::string::npos) {
+                unsigned long long first = std::stoull(line.substr(0, dashPos));
+                unsigned long long second = std::stoull(line.substr(dashPos + 1));
+                ranges.push_back({first, second});
+            }
+        } else {
+            // Parse single ingredient value
+            ingredients.push_back(std::stoull(line));
         }
     }
     
     inFile.close();
-    return data;
+    return std::make_tuple(ranges, ingredients);
 }
 
 int main(int argc, char* argv[]) {
@@ -43,11 +63,26 @@ int main(int argc, char* argv[]) {
     }
     
     try {
-        std::vector<std::string> data = readInputFile(filename);
+        auto [ranges, ingredients] = readInputFile(filename);
         
-        std::cout << "Read " << data.size() << " lines from file." << std::endl;
+        std::cout << "Read " << ranges.size() << " ranges and " 
+                  << ingredients.size() << " ingredients from file." << std::endl;
         
         // Your solution logic goes here
+
+        unsigned long long count = 0;
+        for(auto id: ingredients) {
+            bool bValid = false;
+
+            for(auto range = ranges.begin(); !bValid && (range != ranges.end()); range++ ) {
+                if(id >= range->first && id <= range->second) {
+                    count++;
+                    bValid = true;
+                }
+            }
+        }
+
+        std::cout << "The number of valid ingredients: " << count << std::endl;
         
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
