@@ -17,11 +17,11 @@ cmake --build build
 How to run
 - Single-file build:
 ```bash
-./aoc_solution < input.txt
-./aoc_solution_part2 < input.txt
+./aoc_solution --filename input.txt
+./aoc_solution_part2 --filename input.txt
 ```
 - CMake build (binaries in build/):
 ```bash
-./build/aoc_solution < input.txt
-./build/aoc_solution_part2 < input.txt
+./build/aoc_solution --filename input.txt
+./build/aoc_solution_part2 --filename input.txt
 ```
