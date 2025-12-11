@@ -78,7 +78,13 @@ int main(int argc, char* argv[]) {
 
         //list of sets of box idxs
         std::list<std::set<size_t>> circuits;
-        int current_cercuit = 1;
+
+        // Initialize: each junction box starts in its own circuit
+        for (size_t i = 0; i < data.size(); i++) {
+            std::set<size_t> single_circuit;
+            single_circuit.insert(i);
+            circuits.push_back(single_circuit);
+        }
 
         //calculate distances without sqrt and save them in a multimap: distance -> (item1, item2)
 
@@ -96,28 +102,19 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        //while (i < distances.size() && num_connections < num_cables) {
+        //    auto dist_iter = std::next(distances.begin(), i);
+        //}
         //now iterate through the distances and group items into circuits
         int num_connections = 0;
         size_t i = 0;
-        while (i < distances.size() && num_connections < num_cables) {
+        while (i < distances.size() && i < num_cables) {
             auto dist_iter = std::next(distances.begin(), i);
             auto [dist, indexes] = *dist_iter;
             auto [item_idx1, item_idx2] = indexes;
             i++;
             
             std::cout << "Distance: " << dist << " between items " << item_idx1 << " and " << item_idx2 << std::endl;
-
-            if(!circuits.size()) {
-                //first circuit
-                std::cout << "[DEBUG:" << i << ":0]   -> Creating first circuit with items " << item_idx1 << " and " << item_idx2 << std::endl;
-                std::set<size_t> new_circuit;
-                new_circuit.insert(item_idx1);
-                new_circuit.insert(item_idx2);
-                circuits.push_back(new_circuit);
-                num_connections++;
-                std::cout << "[DEBUG:" << i << ":0b]      num_circuits=" << circuits.size() << std::endl;
-                continue;
-            }
 
             auto circuit_it1 = std::find_if( circuits.begin(), circuits.end(),
                                                 [&](const std::set<size_t>& c){ return c.count(item_idx1) > 0; }
@@ -129,34 +126,6 @@ int main(int argc, char* argv[]) {
             std::cout << "[DEBUG:" << i << ":1]   Item " << item_idx1 << " found: " << (circuit_it1 != circuits.end() ? "YES" : "NO") << std::endl;
             std::cout << "[DEBUG:" << i << ":2]   Item " << item_idx2 << " found: " << (circuit_it2 != circuits.end() ? "YES" : "NO") << std::endl;
 
-            if((circuit_it1 == circuits.end()) && (circuit_it2 == circuits.end())) {
-                //create new circuit
-                std::cout << "[DEBUG:" << i << ":3]   -> Creating new circuit with items " << item_idx1 << " and " << item_idx2 << std::endl;
-                std::set<size_t> new_circuit;
-                new_circuit.insert(item_idx1);
-                new_circuit.insert(item_idx2);
-                circuits.push_back(new_circuit);
-                num_connections++;
-                std::cout << "[DEBUG:" << i << ":3b]      num_circuits=" << circuits.size() << std::endl;
-                continue;
-            }
-
-            if(circuit_it1 == circuits.end()) {
-                //add index item 1 to the index 2 circuit
-                std::cout << "[DEBUG:" << i << ":4]   -> Adding item " << item_idx1 << " to existing circuit" << std::endl;
-                circuit_it2->insert(item_idx1);
-                num_connections++;
-                continue;
-            }
-            
-            if(circuit_it2 == circuits.end()) {
-                //add index item 2 to the index 1 circuit
-                std::cout << "[DEBUG:" << i << ":5]   -> Adding item " << item_idx2 << " to existing circuit" << std::endl;
-                circuit_it1->insert(item_idx2);
-                num_connections++;
-                continue;
-            }
-
             if(circuit_it2 == circuit_it1) {
                 //both indexes are already in the same circuit, do nothing
                 std::cout << "[DEBUG:" << i << ":6]   -> Both items already in same circuit" << std::endl;
@@ -164,7 +133,7 @@ int main(int argc, char* argv[]) {
                 continue;
             }
 
-            //indexes are in different circuits, merge them into the one closer to the beginning and delete the other
+            //indexes are in different circuits, merge them
             auto dist1 = std::distance(circuits.begin(), circuit_it1);
             auto dist2 = std::distance(circuits.begin(), circuit_it2);
             
@@ -175,6 +144,7 @@ int main(int argc, char* argv[]) {
             circuits.erase(circuit_it2);
             num_connections++;
         }
+        
         std::cout << "Number of circuits: " << circuits.size() << " items " << std::endl;
         
         // Output each circuit
@@ -206,6 +176,7 @@ int main(int argc, char* argv[]) {
             circuit_add += circuit_sizes[i];
         }
 
+        std::cout << "Number of connections made: " << num_connections << std::endl;
         std::cout << "Multiplication of the largest 3 circuit sizes: " << circuit_mul << std::endl;
         std::cout << "Addition of all circuit sizes: " << circuit_add << std::endl;
         
