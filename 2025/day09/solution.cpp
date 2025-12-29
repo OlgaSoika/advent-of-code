@@ -1,9 +1,23 @@
 #include <algorithm>
-#include <iostream>
+#include <bitset>
+#include <cstdint>
+
 #include <fstream>
+#include <iostream>
 #include <sstream>
+
 #include <string>
 #include <vector>
+
+constexpr size_t TILES_PER_BYTE = 8;
+
+constexpr size_t TILES_PER_BLOCK = sizeof(uint64_t) * TILES_PER_BYTE;
+
+constexpr size_t BYTES_PER_BLOCK = sizeof(uint64_t);
+
+size_t TILES_SIZE = 0;
+
+size_t TILES_PER_ITEM = 0;
 
 bool parseCommandLine(int argc, char* argv[], std::string &filename) {
     for (int i = 1; i < argc; i++) {
@@ -56,6 +70,14 @@ bool is_red_and_green(const std::vector<std::vector<char>> &tiles,
     std::cout << "  All 'A' -> TRUE" << std::endl;
     return true;
 }
+/*
+void mark_tile(std::vector<std::vector<char>> &tiles, 
+               unsigned long long x1, unsigned long long y1,
+               unsigned long long x2, unsigned long long y2) {
+    
+            
+
+}*/
 
 void mark_area(std::vector<std::vector<char>> &tiles, 
                unsigned long long x1, unsigned long long y1,
@@ -119,8 +141,13 @@ int main(int argc, char* argv[]) {
         }
 
         // part2 solution
-        size_t tiles_size = std::max(max_x, max_y) + 1;
-        std::vector<std::vector<char>> tiles(tiles_size, std::vector<char>(tiles_size, '.'));
+        TILES_SIZE = std::max(max_x, max_y) + 1;
+        const size_t BLOCKS_SIZE = TILES_SIZE; //  / TILES_PER_BLOCK + ((TILES_SIZE % TILES_PER_BLOCK) ? 1 : 0);
+        //const size_t BYTES_SIZE = ITEMS_SIZE * BYTES_PER_BLOCK;
+
+        using tiles_block = std::bitset<TILES_PER_BLOCK>;
+
+        std::vector<std::vector<char>> tiles(BLOCKS_SIZE, std::vector<char>(BLOCKS_SIZE, '.'));
 
         auto [x1, y1] = data[0];
         for (size_t i = 1; i < data.size(); i++) {    
@@ -138,7 +165,7 @@ int main(int argc, char* argv[]) {
         mark_area(tiles, x1, y1, x2, y2);
             
         unsigned long long max_area_part_2 = 0;
-        for (size_t y = 0; y < tiles_size; y++) {
+        for (size_t y = 0; y < BLOCKS_SIZE; y++) {
             //now find X of 'A's in the row
 
             auto it = std::find(tiles[y].begin(), tiles[y].end(), 'A');
@@ -146,7 +173,7 @@ int main(int argc, char* argv[]) {
                 size_t first_x = std::distance(tiles[y].begin(), it);
                 
                 auto rit = std::find(tiles[y].rbegin(), tiles[y].rend(), 'A');
-                size_t last_x = tiles_size - 1 - std::distance(tiles[y].rbegin(), rit);
+                size_t last_x = BLOCKS_SIZE - 1 - std::distance(tiles[y].rbegin(), rit);
                 
                 for(size_t x = first_x; x<=last_x; x++) {
                     //mark the area between first_x and last_x as 'A'
@@ -178,9 +205,10 @@ int main(int argc, char* argv[]) {
         }
 
         // Output tiles grid
-        for (size_t x = 0; x < (tiles_size>60?60:tiles_size); x++) {
-            for (size_t y = 0; y < (tiles_size>60?60:tiles_size); y++) {
-                std::cout << tiles[x][y];
+        size_t out_size = (BLOCKS_SIZE > 60 ? 60 : BLOCKS_SIZE);
+        for (size_t y = 0; y < out_size; y++) {
+            for (size_t x = 0; x < out_size; x++) {
+                std::cout << tiles[y][x];
             }
             std::cout << std::endl;
         }
