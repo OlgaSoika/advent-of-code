@@ -56,6 +56,29 @@ bool is_red_and_green(const std::vector<std::vector<char>> &tiles,
     std::cout << "  All 'A' -> TRUE" << std::endl;
     return true;
 }
+
+void mark_area(std::vector<std::vector<char>> &tiles, 
+               unsigned long long x1, unsigned long long y1,
+               unsigned long long x2, unsigned long long y2) {
+    std::cout << "Marking line from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" << std::endl;
+    if(x1 == x2) {
+        // vertical line
+        for (size_t y = std::min(y1, y2); y <= std::max(y1, y2); y++) {
+            tiles[y][x1] = 'A';
+        }
+    } else if (y1 == y2) {
+        // horizontal line
+        for (size_t x = std::min(x1, x2); x <= std::max(x1, x2); x++) {
+            tiles[y1][x] = 'A';
+        }
+    } else {
+        std::cout << "Error: non straight line from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" 
+            << std::endl;
+        throw std::runtime_error("Only horizontal or vertical lines are supported.");
+    }
+        
+}   
+
 int main(int argc, char* argv[]) {
     std::string filename;
     
@@ -103,21 +126,8 @@ int main(int argc, char* argv[]) {
         for (size_t i = 1; i < data.size(); i++) {    
             auto [x2, y2] = data[i];
     
-            if(x1 == x2) {
-                // vertical line
-                for (size_t y = std::min(y1, y2); y <= std::max(y1, y2); y++) {
-                    tiles[y][x1] = 'A';
-                }
-            } else if (y1 == y2) {
-                // horizontal line
-                for (size_t x = std::min(x1, x2); x <= std::max(x1, x2); x++) {
-                    tiles[y1][x] = 'A';
-                }
-            } else {
-                std::cout << "Error: non straight line from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" 
-                    << " i: " << i << std::endl;
-                throw std::runtime_error("Only horizontal or vertical lines are supported.");
-            }
+            mark_area(tiles, x1, y1, x2, y2);
+
             std::tie(x1, y1) = std::make_pair(x2, y2);
         }
         //for the first point and the last point
@@ -125,21 +135,7 @@ int main(int argc, char* argv[]) {
         auto [x2, y2] = data[data.size() - 1];
         std::cout << "DEBUG: Closing loop from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" << std::endl;
     
-        if(x1 == x2) {
-            // vertical line
-            std::cout << "  Vertical line at x=" << x1 << " from y=" << std::min(y1, y2) << " to y=" << std::max(y1, y2) << std::endl;
-            for (size_t y = std::min(y1, y2); y <= std::max(y1, y2); y++) {
-                tiles[y][x1] = 'A';
-            }
-        } else if (y1 == y2) {
-            // horizontal line
-            std::cout << "  Horizontal line at y=" << y1 << " from x=" << std::min(x1, x2) << " to x=" << std::max(x1, x2) << std::endl;
-            for (size_t x = std::min(x1, x2); x <= std::max(x1, x2); x++) {
-                tiles[y1][x] = 'A';
-            }
-        } else {
-            std::cout << "  ERROR: Not a straight line!" << std::endl;
-        }
+        mark_area(tiles, x1, y1, x2, y2);
             
         unsigned long long max_area_part_2 = 0;
         for (size_t y = 0; y < tiles_size; y++) {
@@ -181,10 +177,9 @@ int main(int argc, char* argv[]) {
             }
         }
 
-
         // Output tiles grid
-        for (size_t x = 0; x < tiles_size; x++) {
-            for (size_t y = 0; y < tiles_size; y++) {
+        for (size_t x = 0; x < (tiles_size>60?60:tiles_size); x++) {
+            for (size_t y = 0; y < (tiles_size>60?60:tiles_size); y++) {
                 std::cout << tiles[x][y];
             }
             std::cout << std::endl;
