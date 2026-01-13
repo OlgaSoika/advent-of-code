@@ -19,6 +19,10 @@ size_t TILES_SIZE = 0;
 
 size_t TILES_PER_ITEM = 0;
 
+using tiles_block = std::bitset<TILES_PER_BLOCK>;
+
+using tiles_matrix = std::vector<std::vector<tiles_block>>;
+
 bool parseCommandLine(int argc, char* argv[], std::string &filename) {
     for (int i = 1; i < argc; i++) {
         if (std::string(argv[i]) == "--filename" && i + 1 < argc) {
@@ -78,6 +82,27 @@ void mark_tile(std::vector<std::vector<char>> &tiles,
             
 
 }*/
+void mark_area(tiles_block &tiles, 
+               unsigned long long x1, unsigned long long y1,
+               unsigned long long x2, unsigned long long y2) {
+    std::cout << "Marking line from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" << std::endl;
+    if(x1 == x2) {
+        // vertical line
+        for (size_t y = std::min(y1, y2); y <= std::max(y1, y2); y++) {
+            tiles[y][x1/TILES_PER_BLOCK].set(x1%TILES_PER_BLOCK, true);
+        }
+    } else if (y1 == y2) {
+        // horizontal line
+        for (size_t x = std::min(x1, x2); x <= std::max(x1, x2); x++) {
+            tiles[y1][x/TILES_PER_BLOCK].set(x%TILES_PER_BLOCK, true);
+        }
+    } else {
+        std::cout << "Error: non straight line from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" 
+            << std::endl;
+        throw std::runtime_error("Only horizontal or vertical lines are supported.");
+    }
+        
+}   
 
 void mark_area(std::vector<std::vector<char>> &tiles, 
                unsigned long long x1, unsigned long long y1,
@@ -142,12 +167,24 @@ int main(int argc, char* argv[]) {
 
         // part2 solution
         TILES_SIZE = std::max(max_x, max_y) + 1;
-        const size_t BLOCKS_SIZE = TILES_SIZE; //  / TILES_PER_BLOCK + ((TILES_SIZE % TILES_PER_BLOCK) ? 1 : 0);
+        const size_t BLOCKS_SIZE = TILES_SIZE / TILES_PER_BLOCK + ((TILES_SIZE % TILES_PER_BLOCK) ? 1 : 0);
+        //const size_t BLOCKS_SIZE = TILES_SIZE; //  / TILES_PER_BLOCK + ((TILES_SIZE % TILES_PER_BLOCK) ? 1 : 0);
         //const size_t BYTES_SIZE = ITEMS_SIZE * BYTES_PER_BLOCK;
 
         using tiles_block = std::bitset<TILES_PER_BLOCK>;
 
-        std::vector<std::vector<char>> tiles(BLOCKS_SIZE, std::vector<char>(BLOCKS_SIZE, '.'));
+        //std::vector<std::vector<char>> tiles;
+        std::vector<std::vector<std::bitset<TILES_PER_BLOCK>>> tiles;
+
+        // Allocate memory to subvectors and initialize with '.'
+        for (size_t i = 0; i < TILES_SIZE; ++i) {
+            std::vector<std::bitset<TILES_PER_BLOCK>> row;
+            for (size_t j = 0; j < BLOCKS_SIZE; ++j) {
+                row.push_back(std::bitset<TILES_PER_BLOCK>(0));
+            }
+            tiles.push_back(row);
+        }
+        //std::vector<std::vector<char>> tiles(100000, std::vector<char>(10000, '.'));
 
         auto [x1, y1] = data[0];
         for (size_t i = 1; i < data.size(); i++) {    
@@ -179,11 +216,6 @@ int main(int argc, char* argv[]) {
                     //mark the area between first_x and last_x as 'A'
                     tiles[y][x] = 'A';
                 }
-
-//                size_t area = (last_x - first_x + 1);
-//                std::cout << "Row " << y << ": first_x=" << first_x << ", last_x=" << last_x 
-//                          << ", area=" << area << ", total=" << (max_area_part_2 + area) << std::endl;
-//                max_area_part_2 += area;
             }   
         }
 
