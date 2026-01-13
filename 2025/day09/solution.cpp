@@ -1,9 +1,27 @@
 #include <algorithm>
-#include <iostream>
+#include <bitset>
+#include <cstdint>
+
 #include <fstream>
+#include <iostream>
 #include <sstream>
+
 #include <string>
 #include <vector>
+
+constexpr size_t TILES_PER_BYTE = 8;
+
+constexpr size_t TILES_PER_BLOCK = sizeof(uint64_t) * TILES_PER_BYTE;
+
+constexpr size_t BYTES_PER_BLOCK = sizeof(uint64_t);
+
+size_t TILES_SIZE = 0;
+
+size_t TILES_PER_ITEM = 0;
+
+using tiles_block = std::bitset<TILES_PER_BLOCK>;
+
+using tiles_matrix = std::vector<std::vector<tiles_block>>;
 
 bool parseCommandLine(int argc, char* argv[], std::string &filename) {
     for (int i = 1; i < argc; i++) {
@@ -56,6 +74,58 @@ bool is_red_and_green(const std::vector<std::vector<char>> &tiles,
     std::cout << "  All 'A' -> TRUE" << std::endl;
     return true;
 }
+/*
+void mark_tile(std::vector<std::vector<char>> &tiles, 
+               unsigned long long x1, unsigned long long y1,
+               unsigned long long x2, unsigned long long y2) {
+    
+            
+
+}*/
+void mark_area(tiles_block &tiles, 
+               unsigned long long x1, unsigned long long y1,
+               unsigned long long x2, unsigned long long y2) {
+    std::cout << "Marking line from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" << std::endl;
+    if(x1 == x2) {
+        // vertical line
+        for (size_t y = std::min(y1, y2); y <= std::max(y1, y2); y++) {
+            tiles[y][x1/TILES_PER_BLOCK].set(x1%TILES_PER_BLOCK, true);
+        }
+    } else if (y1 == y2) {
+        // horizontal line
+        for (size_t x = std::min(x1, x2); x <= std::max(x1, x2); x++) {
+            tiles[y1][x/TILES_PER_BLOCK].set(x%TILES_PER_BLOCK, true);
+        }
+    } else {
+        std::cout << "Error: non straight line from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" 
+            << std::endl;
+        throw std::runtime_error("Only horizontal or vertical lines are supported.");
+    }
+        
+}   
+
+void mark_area(std::vector<std::vector<char>> &tiles, 
+               unsigned long long x1, unsigned long long y1,
+               unsigned long long x2, unsigned long long y2) {
+    std::cout << "Marking line from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" << std::endl;
+    if(x1 == x2) {
+        // vertical line
+        for (size_t y = std::min(y1, y2); y <= std::max(y1, y2); y++) {
+            tiles[y][x1] = 'A';
+        }
+    } else if (y1 == y2) {
+        // horizontal line
+        for (size_t x = std::min(x1, x2); x <= std::max(x1, x2); x++) {
+            tiles[y1][x] = 'A';
+        }
+    } else {
+        std::cout << "Error: non straight line from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" 
+            << std::endl;
+        throw std::runtime_error("Only horizontal or vertical lines are supported.");
+    }
+        
+}   
+
 int main(int argc, char* argv[]) {
     std::string filename;
     
@@ -96,28 +166,32 @@ int main(int argc, char* argv[]) {
         }
 
         // part2 solution
-        size_t tiles_size = std::max(max_x, max_y) + 1;
-        std::vector<std::vector<char>> tiles(tiles_size, std::vector<char>(tiles_size, '.'));
+        TILES_SIZE = std::max(max_x, max_y) + 1;
+        const size_t BLOCKS_SIZE = TILES_SIZE / TILES_PER_BLOCK + ((TILES_SIZE % TILES_PER_BLOCK) ? 1 : 0);
+        //const size_t BLOCKS_SIZE = TILES_SIZE; //  / TILES_PER_BLOCK + ((TILES_SIZE % TILES_PER_BLOCK) ? 1 : 0);
+        //const size_t BYTES_SIZE = ITEMS_SIZE * BYTES_PER_BLOCK;
+
+        using tiles_block = std::bitset<TILES_PER_BLOCK>;
+
+        //std::vector<std::vector<char>> tiles;
+        std::vector<std::vector<std::bitset<TILES_PER_BLOCK>>> tiles;
+
+        // Allocate memory to subvectors and initialize with '.'
+        for (size_t i = 0; i < TILES_SIZE; ++i) {
+            std::vector<std::bitset<TILES_PER_BLOCK>> row;
+            for (size_t j = 0; j < BLOCKS_SIZE; ++j) {
+                row.push_back(std::bitset<TILES_PER_BLOCK>(0));
+            }
+            tiles.push_back(row);
+        }
+        //std::vector<std::vector<char>> tiles(100000, std::vector<char>(10000, '.'));
 
         auto [x1, y1] = data[0];
         for (size_t i = 1; i < data.size(); i++) {    
             auto [x2, y2] = data[i];
     
-            if(x1 == x2) {
-                // vertical line
-                for (size_t y = std::min(y1, y2); y <= std::max(y1, y2); y++) {
-                    tiles[y][x1] = 'A';
-                }
-            } else if (y1 == y2) {
-                // horizontal line
-                for (size_t x = std::min(x1, x2); x <= std::max(x1, x2); x++) {
-                    tiles[y1][x] = 'A';
-                }
-            } else {
-                std::cout << "Error: non straight line from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" 
-                    << " i: " << i << std::endl;
-                throw std::runtime_error("Only horizontal or vertical lines are supported.");
-            }
+            mark_area(tiles, x1, y1, x2, y2);
+
             std::tie(x1, y1) = std::make_pair(x2, y2);
         }
         //for the first point and the last point
@@ -125,24 +199,10 @@ int main(int argc, char* argv[]) {
         auto [x2, y2] = data[data.size() - 1];
         std::cout << "DEBUG: Closing loop from (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ")" << std::endl;
     
-        if(x1 == x2) {
-            // vertical line
-            std::cout << "  Vertical line at x=" << x1 << " from y=" << std::min(y1, y2) << " to y=" << std::max(y1, y2) << std::endl;
-            for (size_t y = std::min(y1, y2); y <= std::max(y1, y2); y++) {
-                tiles[y][x1] = 'A';
-            }
-        } else if (y1 == y2) {
-            // horizontal line
-            std::cout << "  Horizontal line at y=" << y1 << " from x=" << std::min(x1, x2) << " to x=" << std::max(x1, x2) << std::endl;
-            for (size_t x = std::min(x1, x2); x <= std::max(x1, x2); x++) {
-                tiles[y1][x] = 'A';
-            }
-        } else {
-            std::cout << "  ERROR: Not a straight line!" << std::endl;
-        }
+        mark_area(tiles, x1, y1, x2, y2);
             
         unsigned long long max_area_part_2 = 0;
-        for (size_t y = 0; y < tiles_size; y++) {
+        for (size_t y = 0; y < BLOCKS_SIZE; y++) {
             //now find X of 'A's in the row
 
             auto it = std::find(tiles[y].begin(), tiles[y].end(), 'A');
@@ -150,17 +210,12 @@ int main(int argc, char* argv[]) {
                 size_t first_x = std::distance(tiles[y].begin(), it);
                 
                 auto rit = std::find(tiles[y].rbegin(), tiles[y].rend(), 'A');
-                size_t last_x = tiles_size - 1 - std::distance(tiles[y].rbegin(), rit);
+                size_t last_x = BLOCKS_SIZE - 1 - std::distance(tiles[y].rbegin(), rit);
                 
                 for(size_t x = first_x; x<=last_x; x++) {
                     //mark the area between first_x and last_x as 'A'
                     tiles[y][x] = 'A';
                 }
-
-//                size_t area = (last_x - first_x + 1);
-//                std::cout << "Row " << y << ": first_x=" << first_x << ", last_x=" << last_x 
-//                          << ", area=" << area << ", total=" << (max_area_part_2 + area) << std::endl;
-//                max_area_part_2 += area;
             }   
         }
 
@@ -181,11 +236,11 @@ int main(int argc, char* argv[]) {
             }
         }
 
-
         // Output tiles grid
-        for (size_t x = 0; x < tiles_size; x++) {
-            for (size_t y = 0; y < tiles_size; y++) {
-                std::cout << tiles[x][y];
+        size_t out_size = (BLOCKS_SIZE > 60 ? 60 : BLOCKS_SIZE);
+        for (size_t y = 0; y < out_size; y++) {
+            for (size_t x = 0; x < out_size; x++) {
+                std::cout << tiles[y][x];
             }
             std::cout << std::endl;
         }
