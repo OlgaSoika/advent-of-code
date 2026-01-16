@@ -25,7 +25,7 @@ bool parseCommandLine(int argc, char* argv[], std::string &filename) {
 
 using buttons_type = std::vector<std::set<u_int16_t>>;
 //masine launch bitset, buttons sets.
-using data_type = std::tuple<std::bitset<16>, buttons_type, std::vector<u_int32_t>>;
+using data_type = std::tuple<std::bitset<16>, buttons_type, std::vector<u_int16_t>>;
 
 using bitset_vector_type = std::vector<std::bitset<16>>;
 //masine launch bitset, vector of buttons bitsets
@@ -95,7 +95,7 @@ std::vector<data_type> readInputFile(const std::string &filename) {
         }
 
         // Parse values from {...}
-        std::vector<u_int32_t> values;
+        std::vector<u_int16_t> values;
         pos = closeBracket;
         size_t openBrace = line.find('{', pos);
         if (openBrace != std::string::npos) {
@@ -115,7 +115,7 @@ std::vector<data_type> readInputFile(const std::string &filename) {
                 numStr.erase(numStr.find_last_not_of(" \t") + 1);
                 
                 if (!numStr.empty()) {
-                    values.push_back(static_cast<u_int32_t>(std::stoul(numStr)));
+                    values.push_back(static_cast<u_int16_t>(std::stoul(numStr)));
                 }
                 numPos = commaPos + 1;
             }
@@ -128,22 +128,22 @@ std::vector<data_type> readInputFile(const std::string &filename) {
     return data;
 }
 
-std::string make_key(const std::vector<u_int32_t>& counters) {
+std::string make_key(const std::vector<u_int16_t>& counters) {
     std::string key;
-    key.resize(counters.size() * sizeof(u_int32_t));
+    key.resize(counters.size() * sizeof(u_int16_t));
     std::memcpy(key.data(), counters.data(), key.size());
     return key;
 }
 
 //queue item: target, step, counters
-using state_type = std::tuple<u_int32_t, std::vector<u_int32_t>>;
+using state_type = std::tuple<u_int16_t, std::vector<u_int16_t>>;
 
-size_t calc_min_steps(const buttons_type &buttons, const std::vector<u_int32_t> &target) {
+size_t calc_min_steps(const bitset_vector_type &buttons_bits, const std::vector<u_int16_t> &target) {
 
-    size_t num_buttons = buttons.size();
+    size_t num_buttons = buttons_bits.size();
     size_t num_counters = target.size();
 
-    std::vector<u_int32_t> to_process(num_counters, 0);
+    std::vector<u_int16_t> to_process(num_counters, 0);
     std::unordered_set<std::string> visited;
     visited.reserve(1000000);
 
@@ -158,31 +158,39 @@ size_t calc_min_steps(const buttons_type &buttons, const std::vector<u_int32_t> 
 
     size_t max_steps = 1000; // Add a reasonable limit to prevent infinite loops
 
+    bool bOut = true;
     while(!state_queue.empty()) {
         auto [current_step, current_counters] = state_queue.front();
         state_queue.pop();
 
-        //if (current_step % 100 == 0) {
-        //    std::cout << "Current step: " << current_step << ", Queue size: " << state_queue.size() << 
-        //        " Counters: ";
-        //    for(size_t i = 0; i < num_counters; i++) {
-        //        std::cout << current_counters[i] << " ";
-        //    }
-        //    std::cout << std::endl;
-        //}
+        if ((current_step % 10 == 0) && bOut) {
+            if(bOut) {
+                std::cout << "At step " << current_step << ", queue size: " << state_queue.size() << std::endl;
+        
+                std::cout << "Current step: " << current_step << ", Queue size: " << state_queue.size() << 
+                    " Counters: ";
+                for(size_t i = 0; i < num_counters; i++) {
+                    std::cout << current_counters[i] << " ";
+                }
+                std::cout << std::endl;
+                bOut = false;
+            }
+            
+        } else {
+            if (!bOut) bOut = true;
+        }
 
         //try all buttons
         for(size_t i = 0; i < num_buttons; i++) {
-            std::vector<u_int32_t> new_counters = current_counters;
-            const auto &buttonSet = buttons[i];
-
-            for (auto idx : buttonSet) {
-                new_counters[idx]++;
-            }
+            std::vector<u_int16_t> new_counters = current_counters;
+            const auto &buttonBitSet = buttons_bits[i];
 
             //check if we exceeded any target counter
             bool exceeded = false;
             for(size_t i = 0; i < num_counters; i++) {
+                if(buttonBitSet[i]) {
+                    new_counters[i]++;
+                }
                 if(new_counters[i] > target[i]) {
                     exceeded = true;
                     break;
@@ -262,7 +270,7 @@ int main(int argc, char* argv[]) {
 
             const auto &buttons = std::get<BUTTONS>(mashine);
             size_t num_buttons = buttons.size();
-            int min = INT32_MAX;
+            int min = INT16_MAX;
             //go throw all combinations make  XOR and then check
 
             std::cout << "Evaluating mashine with launch bitset " << std::get<LAUNCH_BITSET>(mashine) << " and " << num_buttons << " buttons." << std::endl;
@@ -304,7 +312,22 @@ int main(int argc, char* argv[]) {
                 std::cout << t << " ";
             }
             std::cout << "}." << std::endl; 
-            sum_target += calc_min_steps(buttons, target);
+
+            bitset_vector_type bits_vector;
+            std::cout << " Buttons: { ";
+            for (const auto &buttonSet : buttons) {
+                std::bitset<16> btn_bits;
+                std::cout << "( ";
+                for (const auto &btn : buttonSet) {
+                    std::cout << btn << " ";
+                    btn_bits.set(btn);
+                }
+                std::cout << ") ";
+                bits_vector.push_back(btn_bits);
+            }
+            std::cout << "}" << std::endl;
+
+            sum_target += calc_min_steps(bits_vector, target);
         }
         //part 1 solution
         std::cout << "Minimum number of buttons: " << sum << std::endl;
