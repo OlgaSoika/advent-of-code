@@ -1,10 +1,11 @@
+#include <algorithm>
 #include <bitset>
 #include <cstdint>
 #include <stdexcept>
 
 #include <iostream>
 #include <fstream>
-
+#include <queue>
 #include <set>
 #include <string>
 
@@ -23,15 +24,15 @@ bool parseCommandLine(int argc, char* argv[], std::string &filename) {
 
 using buttons_type = std::vector<std::set<u_int16_t>>;
 //masine launch bitset, buttons sets.
-using data_type = std::tuple<std::bitset<16>, buttons_type>;
-
+using data_type = std::tuple<std::bitset<16>, buttons_type, std::vector<u_int32_t>>;
 
 using bitset_vector_type = std::vector<std::bitset<16>>;
-//masine launch bitset, vector of buttons bitsets.
+//masine launch bitset, vector of buttons bitsets
 using diagram_type = std::tuple<std::bitset<16>, bitset_vector_type>;
 
 constexpr int LAUNCH_BITSET = 0;
 constexpr int BUTTONS = 1;
+constexpr int COUNTERS = 2;
 
 std::vector<data_type> readInputFile(const std::string &filename) {
     std::vector<data_type> data;
@@ -92,11 +93,103 @@ std::vector<data_type> readInputFile(const std::string &filename) {
             pos = closePos + 1;
         }
 
-        data.push_back(std::make_tuple(bits, buttons));
+        // Parse values from {...}
+        std::vector<u_int32_t> values;
+        pos = closeBracket;
+        size_t openBrace = line.find('{', pos);
+        if (openBrace != std::string::npos) {
+            size_t closeBrace = line.find('}', openBrace);
+            std::string content = line.substr(openBrace + 1, closeBrace - openBrace - 1);
+            
+            // Parse comma-separated values
+            size_t numPos = 0;
+            while (numPos < content.length()) {
+                size_t commaPos = content.find(',', numPos);
+                if (commaPos == std::string::npos) {
+                    commaPos = content.length();
+                }
+                std::string numStr = content.substr(numPos, commaPos - numPos);
+                // Trim whitespace
+                numStr.erase(0, numStr.find_first_not_of(" \t"));
+                numStr.erase(numStr.find_last_not_of(" \t") + 1);
+                
+                if (!numStr.empty()) {
+                    values.push_back(static_cast<u_int32_t>(std::stoul(numStr)));
+                }
+                numPos = commaPos + 1;
+            }
+        }
+
+        data.push_back(std::make_tuple(bits, buttons, values));
     }
 
     inFile.close();
     return data;
+}
+
+//queue item: target, step, counters
+using state_type = std::tuple<std::vector<u_int32_t>, u_int32_t, std::vector<u_int32_t>>;
+
+size_t calc_min_steps(const buttons_type &buttons, const std::vector<u_int32_t> &target) {
+
+    size_t num_buttons = buttons.size();
+    size_t num_counters = target.size();
+
+    std::vector<u_int32_t> to_process(num_counters, 0);
+    std::set<std::vector<u_int32_t>> visited;
+
+    //BFS queue
+    std::queue<state_type> state_queue;
+
+    //push initial state to the queue
+    state_queue.push(std::make_tuple(target, 0, to_process));
+    visited.insert(to_process);
+
+    size_t max_steps = 1000; // Add a reasonable limit to prevent infinite loops
+
+    while(!state_queue.empty()) {
+        auto [current_target, current_step, current_counters] = state_queue.front();
+        state_queue.pop();
+
+        //check if current counters match the target
+        if(current_counters == target) {
+            return current_step;
+        }
+
+        //check if we exceeded any target counter
+        bool exceeded = false;
+        for(size_t i = 0; i < num_counters; i++) {
+            if(current_counters[i] > current_target[i]) {
+                exceeded = true;
+                break;
+            }
+        }
+        if(exceeded) {
+            continue; //skip this state
+        }   
+        
+        //try all buttons
+        for(size_t i = 0; i < num_buttons; i++) {
+            std::vector<u_int32_t> new_counters = current_counters;
+            const auto &buttonSet = buttons[i];
+
+            for(size_t counter_index = 0; counter_index < num_counters; counter_index++) {
+                if(buttonSet.find(counter_index) != buttonSet.end()) {  
+                    new_counters[counter_index]++;
+                }
+            }
+            
+            //check if this state was visited
+            if(visited.find(new_counters) == visited.end()) {
+                visited.insert(new_counters);
+
+                //push new state to the queue
+                state_queue.push(std::make_tuple(current_target, current_step + 1, new_counters));
+            }
+        }
+    }   
+
+    return 0;
 }
 
 int main(int argc, char* argv[]) {
@@ -139,10 +232,11 @@ int main(int argc, char* argv[]) {
             mashines.push_back(std::make_tuple(bits, bits_vector));
         }
         
-        // find miniml number of items;
+        // find minimal number of items to get required combination;
         std::cout << "Calculating minimum number of buttons..." << std::endl;
         int sum = 0;
         for (const auto &mashine : mashines) {
+
             const auto &buttons = std::get<BUTTONS>(mashine);
             size_t num_buttons = buttons.size();
             int min = INT32_MAX;
@@ -171,7 +265,28 @@ int main(int argc, char* argv[]) {
             }
             sum += min;
         }
+
+        //part2
+        // find minimal number of items;
+        std::cout << "Calculating minimum number of buttons part 2..." << std::endl;
+        int sum_target = 0;
+        for (const auto &item : data) {
+            const auto &buttons = std::get<BUTTONS>(item);
+            const auto &target = std::get<COUNTERS>(item);
+            
+            //output current item
+            auto mashine = mashines[&item - &data[0]];  
+            std::cout << "Evaluating mashine with launch bitset " << std::get<LAUNCH_BITSET>(mashine) << " and target counters { ";
+            for (const auto &t : target) {
+                std::cout << t << " ";
+            }
+            std::cout << "}." << std::endl; 
+            sum_target += calc_min_steps(buttons, target);
+        }
+        //part 1 solution
         std::cout << "Minimum number of buttons: " << sum << std::endl;
+        //part 2 solution
+        std::cout << "Minimum number of buttons: " << sum_target << std::endl;
 
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
