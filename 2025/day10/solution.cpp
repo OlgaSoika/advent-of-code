@@ -10,6 +10,7 @@
 #include <string>
 
 #include <tuple>
+#include <unordered_set>
 #include <vector>
 
 bool parseCommandLine(int argc, char* argv[], std::string &filename) {
@@ -127,8 +128,15 @@ std::vector<data_type> readInputFile(const std::string &filename) {
     return data;
 }
 
+std::string make_key(const std::vector<u_int32_t>& counters) {
+    std::string key;
+    key.resize(counters.size() * sizeof(u_int32_t));
+    std::memcpy(key.data(), counters.data(), key.size());
+    return key;
+}
+
 //queue item: target, step, counters
-using state_type = std::tuple<std::vector<u_int32_t>, u_int32_t, std::vector<u_int32_t>>;
+using state_type = std::tuple<u_int32_t, std::vector<u_int32_t>>;
 
 size_t calc_min_steps(const buttons_type &buttons, const std::vector<u_int32_t> &target) {
 
@@ -136,56 +144,71 @@ size_t calc_min_steps(const buttons_type &buttons, const std::vector<u_int32_t> 
     size_t num_counters = target.size();
 
     std::vector<u_int32_t> to_process(num_counters, 0);
-    std::set<std::vector<u_int32_t>> visited;
+    std::unordered_set<std::string> visited;
+    visited.reserve(1000000);
 
     //BFS queue
     std::queue<state_type> state_queue;
 
     //push initial state to the queue
-    state_queue.push(std::make_tuple(target, 0, to_process));
-    visited.insert(to_process);
+    state_queue.push(std::make_tuple(0, to_process));
+    //check if this state was visited
+    std::string key = make_key(to_process);
+    visited.insert(key);
 
     size_t max_steps = 1000; // Add a reasonable limit to prevent infinite loops
 
     while(!state_queue.empty()) {
-        auto [current_target, current_step, current_counters] = state_queue.front();
+        auto [current_step, current_counters] = state_queue.front();
         state_queue.pop();
 
-        //check if current counters match the target
-        if(current_counters == target) {
-            return current_step;
-        }
+        //if (current_step % 100 == 0) {
+        //    std::cout << "Current step: " << current_step << ", Queue size: " << state_queue.size() << 
+        //        " Counters: ";
+        //    for(size_t i = 0; i < num_counters; i++) {
+        //        std::cout << current_counters[i] << " ";
+        //    }
+        //    std::cout << std::endl;
+        //}
 
-        //check if we exceeded any target counter
-        bool exceeded = false;
-        for(size_t i = 0; i < num_counters; i++) {
-            if(current_counters[i] > current_target[i]) {
-                exceeded = true;
-                break;
-            }
-        }
-        if(exceeded) {
-            continue; //skip this state
-        }   
-        
         //try all buttons
         for(size_t i = 0; i < num_buttons; i++) {
             std::vector<u_int32_t> new_counters = current_counters;
             const auto &buttonSet = buttons[i];
 
-            for(size_t counter_index = 0; counter_index < num_counters; counter_index++) {
-                if(buttonSet.find(counter_index) != buttonSet.end()) {  
-                    new_counters[counter_index]++;
+            for (auto idx : buttonSet) {
+                new_counters[idx]++;
+            }
+
+            //check if we exceeded any target counter
+            bool exceeded = false;
+            for(size_t i = 0; i < num_counters; i++) {
+                if(new_counters[i] > target[i]) {
+                    exceeded = true;
+                    break;
                 }
             }
-            
-            //check if this state was visited
-            if(visited.find(new_counters) == visited.end()) {
-                visited.insert(new_counters);
 
-                //push new state to the queue
-                state_queue.push(std::make_tuple(current_target, current_step + 1, new_counters));
+            if(exceeded) {
+                continue; //skip this state
+            }   
+        
+            //check if current counters match the target
+            if(new_counters == target) {
+                return current_step + 1; //found solution
             }
+
+            //check if this state was visited
+            std::string new_counters_key = make_key(new_counters);
+            if(visited.find(new_counters_key) != visited.end()) {
+                continue; //skip already visited state
+            }
+
+            visited.insert(new_counters_key);
+
+            //push new state to the queue
+            state_queue.push(std::make_tuple(current_step + 1, new_counters));
+
         }
     }   
 
