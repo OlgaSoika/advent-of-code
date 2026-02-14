@@ -25,3 +25,8 @@ How to run
 ./build/aoc_solution --filename input.txt
 ./build/aoc_solution_part2 --filename input.txt
 ```
+Input format
+- The program will prompt for the number of cables to process
+- Default value: 10 (for testing with input1.txt)
+- Puzzle input: 1000 (for full input.txt)
+- Press Enter to use default, or type a custom number
