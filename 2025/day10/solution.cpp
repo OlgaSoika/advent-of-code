@@ -162,7 +162,7 @@ size_t calc_min_steps(const bitset_vector_type &buttons_bits, const std::vector<
     while(!state_queue.empty()) {
         auto [current_step, current_counters] = state_queue.front();
         state_queue.pop();
-
+/*
         if ((current_step % 10 == 0) && bOut) {
             if(bOut) {
                 std::cout << "At step " << current_step << ", queue size: " << state_queue.size() << std::endl;
@@ -178,7 +178,7 @@ size_t calc_min_steps(const bitset_vector_type &buttons_bits, const std::vector<
             
         } else {
             if (!bOut) bOut = true;
-        }
+        }*/
 
         //try all buttons
         for(size_t i = 0; i < num_buttons; i++) {
@@ -328,6 +328,7 @@ int main(int argc, char* argv[]) {
             std::cout << "}" << std::endl;
 
             sum_target += calc_min_steps(bits_vector, target);
+            std::cout << "sun_target: " << sum_target << std::endl;
         }
         //part 1 solution
         std::cout << "Minimum number of buttons: " << sum << std::endl;
